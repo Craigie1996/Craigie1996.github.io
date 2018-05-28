@@ -84,7 +84,7 @@ mA分别计算每个属性正样本和负样本分对的比例，再二者平均
 
 网络结构如下所示：
 <img src="Picture8.png" width="60%" height="60%">
-一张图片首先在M-net的3个block产生3个输出，这三个输出再分别用一层1 \* 1 \* L的卷基层调整到channel为L，然用基于元素与一个矩阵相乘，分别输入到AF-net中的3个block。M-net输出的3种不同的featuremap决定了feature level，而channel决定了location。
+一张图片首先在M-net的3个block产生3个输出，这三个输出再分别用一层1 \* 1 \* L的卷积层调整到channel为L，然用基于元素与一个矩阵相乘，分别输入到AF-net中的3个block。M-net输出的3种不同的featuremap决定了feature level，而channel决定了location。
 
 训练过程是分阶段训练. 首先训练M-net，并复制其参数到3条AF-net分支上，再分别训练3条AF-net分支。之后固定前面的网络，训练池化层和全连接层。
 
