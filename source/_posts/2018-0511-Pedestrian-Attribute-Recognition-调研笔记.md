@@ -78,7 +78,7 @@ mA分别计算每个属性正样本和负样本分对的比例，再二者平均
 * 针对不同的场景，挑选合适的属性。不同的场景对属性的需求也不同。考虑到不同的属性由于其不同粒度和规模的特征，会对模型产生很大的影响，所以我认为针对实际场景我们应该挑选需要的属性，分析属性信息属于的特征层次并由属性驱动我们设计针对性的网络结构。
 
 ---
-## 几篇较新的关于行人属性识别的工作
+## 几篇关于行人属性识别的工作
 ### HydraPlus-Net: Attentive Deep Features for Pedestrian Analysis
 港中文和商汤的一篇可以同时解决属性识别和行人再识别的工作。首先总结了目前解决属性识别的方法基本都是提取行人的全局特征，但是因为不同的属性所需求的特征大小都不相同，如判断是否打电话需要肩膀部位的特征，但是判断性别则需要全局的特征。作者提出的方法是通过提取不同位置的特征，即从局部到整体多个角度进行提取，来解决属性识别的问题。同时，还需要从不同的特征层次进行提取，如衣服条纹用浅层特征，但是头发长度则需要相对高层的语意特征。
 
@@ -136,10 +136,8 @@ Inter-Attribute Correlation 结构输入行人间上下文特征z\* 和每一个
 
 结果可视化:
 <img src="Picture17.png" width="75%" height="75%">
-
----
-## 一篇开源工作的详细算法描述
-*Weakly-supervised Learning of Mid-level Features for Pedestrian Attribute Recognition and Localization* 是找到的提供较完整代码的工作，其mA指标在RAP数据集中也是所有方法中效果较好的，故对这篇论文重点关注。
+### Weakly-supervised Learning of Mid-level Features for Pedestrian Attribute Recognition and Localization
+*Weakly-supervised Learning of Mid-level Features for Pedestrian Attribute Recognition and Localization* 是找到的提供较完整代码的工作，其mA指标在RAP数据集中效果较好，但是基于example的一组指标却表现不甚理想。奇怪的是，我用其他方式进行数据预处理后，这组指标出现显著提升，怀疑先前通过简单的padding对每个图片补足到与所在batch同样size的预处理方式对最终效果产生了很大的影响。
 
 本篇工作提出的想法是，如果行人属性每次的位置不统一的话，那么就难以通过直接输入全幅图像的方式识别属性。所以，论文提出了一种基于弱监督方式并且能够检测属性位置的网络，这样如果某个属性被检测出来出现在图像上，那么与该属性相关的其他属性就更可能被识别出来。比如如果检测网络检测到长发的话，那么女性这个相关的属性就更可能会被识别出来。这里体现了属性定位和属性相关性的思想。
 
@@ -165,6 +163,27 @@ Inter-Attribute Correlation 结构输入行人间上下文特征z\* 和每一个
 算法效果如下：
 <img src="Picture21.png" width="75%" height="75%">
 GMP代表仅采用全局的最大池化
+### Deep View-Sensitive Pedestrian Attribute Inference in an end-to-end Model
+VesPA是目前行人属性识别领域效果最好的一篇文章，也是我们目前的首席算法。
+
+论文利用了RAP数据中对viewpoint的标注，引出一条分支利用该标注训练viewpoint的分类器。在实际使用时，viewpoint分类器将首先对行人图片的viewpoint进行分类，接softmax层输出代表正、侧、后三个方位概率的值。代表3个方位的inception模块分别经池化和全连接层后对所有属性进行预测，预测结果将被赋予此前三个值作为权重代表3个方位的预测结果。最终的预测结果由3个分支的预测结果相加后接sigmoid层得出.
+
+网络结构:
+<img src="Picture22.png" width="75%" height="75%">
+算法效果:
+<img src="Picture23.png" width="75%" height="75%">
+
+---
+## 下阶段发展方向
+基于目前对于行人属性识别领域的知识储备，我认为以后关于该领域的工作方向有以下几点，我将分别从数据方面和算法方面进行阐述。
+### 数据方面
+行人属性识别的数据存在很大的提升空间。事实上，我认为现今行人属性识别在科研界没有其他方向火热的原因，有一部分数据制约的因素。因为如今公开的数据集数据标注存在界限不明，标注错误的现象，目前无论如何设计算法，在基于这些数据的benchmark上也难以有较大的突破，这导致了属性识别领域的文章较难被收录，使部分专注于此的学者们失去驱动力。在今后的行人属性数据的标注中，可以考虑在标注过程中应去除界限不明的属性（这些属性会在训练中影响那些已经收敛好的属性），在标注之前统一所有标注员对某一属性的标注尺度。另外，在标注中考虑添加头部，上半身，下半身的bounding box位置标注，从而可以设计相应的算法利用这些位置信息，提升识别效果（VesPA利用RAP中viewpoint的辅助标注显著提升了效果，而头部，身体的位置也是十分重要的辅助信息）。
+
+### 算法方面
+目前我重新设计的网络结构中，除了少数网络有微弱的效果提升，其余网络均没有效果上的提升。分析原因除了数据上的制约外，我认为还有网络过于复杂导致训练收敛困难的问题。在我的探索中，我主要尝试把识别viewpoint的网络与多分支提取多粒度的思想和pyramid分part的思想进行结合，但是如何将这些思想完美的结合在一起是一个值得深入研究的问题。在实践中，我尝试了多种结合的方式，即使已经删除、简化部分复杂结构，并对各输出节点进行充分的降维，所形成的网络依然较为庞大。另外可能还存在训练参数的设置问题。因为我在这个领域资质尚浅，仅通过训练过程中loss变化分析训练阶段，调整学习率，步长等参数，在这些参数的设置上我很可能没有选取合适的参数组合得以进一步收敛模型。尽管如此，基于我粗浅的见识和思考，还是认为在以下三个方向上设计算法具有最大的提升效果的可能性：
+* 继续研究如何利用viewpoint分类和对图像的多维度分part，尝试把二者组合在一起。这两个思路都被分别证明在行人属性和ReID领域中具有显著的提升效果。在VesPA中，对viewpoint的利用是通过输出3个代表不同方向概率的值到3个代表不同方向的分支上面，但是从直观上感觉，我一直认为这种利用方式过于冗杂。如果能够把代表3个方向的分支去掉，而把viewpoint分类信息以某种形式添加在一条主干分支上面，能够很大程度的降低模型复杂度。但是如何表达viewpoint的分类信息，是继续输出三个显式的值还是以某种编码的方式传回主干，值得深入研究。
+* Adaptively Weighted Multi-task Deep Network for Person Arribute Classification 这篇论文提出的动态调整某个属性权重的训练trick我认为很适合属性的训练过程。因为众多属性的联合训练确实存在每个属性收敛速度不一样的问题，确实会引发未收敛的属性继续训练影响已收敛的属性的问题。这种动态调整属性权重的trick，我认为很有可能促进模型的收敛程度。
+* 若出现新的数据集，设计算法利用头部、上半身、下半身的位置信息。可以仿照VesPA的思想，首先利用这些信息训练目标检测器，能够检测行人三个部分的位置。再把这些位置信息以某种恰当的形式回传给属性识别网络，辅助预测识别。具体如何融合这些结构，如何传递辅助信息，需要更多的讨论和研究。此外，目标检测器的添加可能会导致速度性能上的降低。
 
 ---
 ## 参考及补充材料
@@ -175,5 +194,6 @@ Code: [*Github*](https://github.com/xh-liu/HydraPlus-Net)
 * Paper: [*Adaptively Weighted Multi-task Deep Network for Person Attribute Classification*](./papers/Adaptively Weighted.pdf) 
 * Paper: [*Attribute Recognition by Joint Recurrent Learning of Context and Correlation*](./papers/JRL.pdf)
 * Paper: [*A Richly Annotated Dataset for Pedestrian Attribute Recognition*](./papers/RAP.pdf)
+* Paper: [*Deep View-Sensitive Pedestrian Attribute Inference in an end-to-end Model*](./papers/VesPA.pdf)
 * PETA数据集主页: http://mmlab.ie.cuhk.edu.hk/projects/PETA.html
 * RAP数据集主页: http://rap.idealtest.org/
